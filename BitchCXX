@@ -88,3 +88,6 @@ LD_PRELOAD=$libpath/lib/libtcmalloc.so ./your_bin
 启动： touch /tmp/heap_profile.start.17281 
 DUMP:  touch /tmp/heap_profile.dump.17281
 
+
+
+////问题解决之后，要工整地抽象成工具
