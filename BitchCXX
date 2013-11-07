@@ -1,0 +1,90 @@
+发件人: Sun,Yixing 
+发送时间: 2013年11月7日 19:31
+收件人: Zhang,Qida
+主题: 贱器
+
+
+class HeapProfile
+{
+public:
+    HeapProfile()
+    {
+        _stop = false;
+        _pid = getpid();
+        pthread_create(&_tid, NULL, monitor, NULL);
+    }
+
+    static void* monitor(void*)
+    {
+        DIR *dir;
+        struct dirent *dent;
+        char buf[128];
+
+        pthread_detach(pthread_self());
+
+        BIGPIPE_LOG_FATAL("monitor running %d", _pid);
+
+        while (!_stop) {
+            sleep(5);
+            dir = opendir("/tmp");
+            while ((dent = readdir(dir))) {
+
+                sprintf(buf, "heap_profile.start.%d", _pid);
+                if (strcmp(buf, dent->d_name) == 0) {
+                    BIGPIPE_LOG_FATAL("heap profile start");
+                    HeapProfilerStart("thomas");
+                    sprintf(buf, "/tmp/heap_profile.start.%d", _pid);
+                    unlink(buf);
+                    break;
+                }
+
+                sprintf(buf, "heap_profile.dump.%d", _pid);
+                if (strcmp(buf, dent->d_name) == 0) {
+                    BIGPIPE_LOG_FATAL("heap profile dump");
+                    HeapProfilerDump("heap_file");
+                    sprintf(buf, "/tmp/heap_profile.dump.%d", _pid);
+                    unlink(buf);
+                    break;
+                }
+
+                sprintf(buf, "heap_profile.stop.%d", _pid);
+                if (strcmp(buf, dent->d_name) == 0) {
+                    BIGPIPE_LOG_FATAL("heap profile stop");
+                    HeapProfilerStop();
+                    sprintf(buf, "/tmp/heap_profile.stop.%d", _pid);
+                    unlink(buf);
+                    _stop = true;
+                    break;
+                }
+
+            }
+
+            closedir(dir);
+        }
+        return NULL;
+    }
+
+private:
+    static bool _stop;
+    pthread_t   _tid;
+    static pid_t       _pid;
+};
+
+bool HeapProfile::_stop;
+pid_t HeapProfile::_pid;
+
+
+
+然后在你需要的地方放个 HeapProfile 变量
+
+libpath=/path/to/tcmalloc
+LDFLAGS 加上 -L$libpath/lib -ltcmalloc
+CPPFLAGS 加上 -I$libpath/include
+
+
+启动进程 
+LD_PRELOAD=$libpath/lib/libtcmalloc.so ./your_bin
+
+启动： touch /tmp/heap_profile.start.17281 
+DUMP:  touch /tmp/heap_profile.dump.17281
+
