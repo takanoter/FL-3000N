@@ -2,7 +2,7 @@ import os, sys
 import time, logging
 #from datetime import *
 def run():
-    os.system('rm -f master/log/master.log.wf.*')  //新开进程非阻塞
+    os.system('rm -f master/log/master.log.wf.*')  //fork and BLOCK
 
 if __name__ == '__main__':
     timeout = 600 #5 minitus
