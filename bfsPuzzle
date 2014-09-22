@@ -1,0 +1,339 @@
+#include <iostream>
+#include <queue>
+#include <stdio.h>
+#include <stdlib.h>
+using namespace std;
+const int theMod = 10028038;
+
+struct CELL {
+    int posi,posj;
+    int type; //0 failed,  1-A,2-B
+    bool colored;
+    CELL (int i,int j,int t) {
+        posi = i;
+        posj = j;
+        type = t;
+        colored = false;
+    }
+    CELL* copy_self() {
+        CELL* cel = new CELL(posi, posj, type);
+        return cel;
+    }
+};
+
+struct MOVE {
+    CELL* cell;
+    int round;
+    MOVE(CELL* c, int r) {
+        cell = c; round = r;
+    }
+};
+
+struct MATRIX {
+    int maxi,maxj;
+    int types;
+    CELL** cells;
+    int sign() {
+        int sign = 0;
+        int factor = maxi*maxj;
+        for (int i=0; i<maxi; i++) {
+            for (int j=0; j<maxj; j++) {
+                int num = 0;
+                if (cells[i*maxj+j]!=NULL) num = cells[i*maxj+j]->type;
+               // printf ("num:%d\n",num);
+                sign = (sign*factor+num)%theMod;
+            }
+        }
+        return sign;
+    }
+
+    bool valid(int i, int j) {
+        if ((i<0) || (j<0)) return false;
+        if ((i>=maxi) || (j>=maxj)) return false;
+        int pos = i*maxj+j;
+        if ((cells==NULL) || (cells[pos]==NULL) || (cells[pos]->type==0)) return false;
+        return true;
+    }
+
+    MATRIX(int total_i, int total_j, int type_count) {
+        maxi = total_i;
+        maxj = total_j;
+        types = type_count;
+        cells = (CELL**)malloc(sizeof(CELL*)*(maxi*maxj));
+        for (int i=0; i<maxi*maxj; i++) {
+            //int cur_i = i/maxj;
+            //int cur_j = i%maxj;
+            cells[i] = NULL;
+        }
+    }
+
+    void right_moves(vector<MOVE> &result) {
+        int cur_i, cur_j, step;
+        CELL* cell = NULL;
+        for (int pos = 0; pos<maxi*maxj; pos++) {
+            cur_i = pos/maxj;cur_j = pos%maxj;
+            if (!valid(cur_i,cur_j)) continue;
+            cell = cells[pos];
+            step = 1;
+            while (valid(cell->posi, cell->posj+step)) {
+                step++;
+            }
+            pos += step - 1;
+            if (step>1) {
+                MOVE mov(cell, step);
+                result.push_back(mov);
+            }
+        }
+    }
+
+    void down_moves(vector<MOVE> &result) {
+        int cur_i, cur_j, step;
+        CELL* cell = NULL;
+        for (int pos = 0; pos<maxi*maxj; pos++) {
+            cur_i = pos%maxi; cur_j = pos/maxi;
+            if (!valid(cur_i,cur_j)) continue;
+            cell = cells[cur_i*maxj+cur_j];
+            step = 1;
+            while (valid(cell->posi+step, cell->posj)) {
+                step++;
+            }
+            pos += step - 1;
+            if (step>1) {
+                MOVE mov(cell, step);
+                result.push_back(mov);
+            }
+        }
+    }
+
+
+    MATRIX* copy_self() {
+        MATRIX* ma = new MATRIX(maxi, maxj, types);
+        for (int i=0; i<maxi*maxj; i++) {
+            if(cells[i]==NULL) ma->cells[i]=NULL;
+            else ma->cells[i] = cells[i]->copy_self();
+        }
+        return ma;
+    }
+
+    void add(int i,int j, int type) {
+        CELL* cell = new CELL(i,j,type);
+        cells[i*maxj+j] = cell;
+    }
+
+    void show() {
+        //printf ("maxi:%d, maxj:%d\n", maxi, maxj);
+        for (int i=0; i<maxi; i++) {
+            CELL** theCells = cells;
+            if (theCells != NULL) {
+                for (int j=0; j<maxj; j++) {
+                    if (theCells[i*(maxj)+j]==NULL) printf (" ");
+                    else printf ("%c", 'A'+(theCells[i*(maxj)+j]->type-1));
+                }
+            }
+            printf("\n");
+        }
+    }
+
+    void move_right(CELL* cell, int step, int total_round) {
+        queue<int>tmp_type;
+        for (int j = cell->posj; j<cell->posj+total_round; j++) {
+            //printf ("%d %d\n", cell->posi, cell->posj);
+            tmp_type.push(cells[cell->posi*maxj+j]->type);
+        }
+        for (int i=0; i<step; i++) {
+            int type = tmp_type.front();
+            tmp_type.pop();
+            tmp_type.push(type);
+        }
+        for (int j = cell->posj; j<cell->posj+total_round; j++) {
+            cells[cell->posi*maxj+j]->type = tmp_type.front();
+            //printf ("[%d]", cells[cell->posi*maxj+j]->type);
+            tmp_type.pop();
+        }
+        //printf ("0ver.\n");
+    }
+
+    void move_down(CELL* cell, int step, int total_round) {
+        queue<int>tmp_type;
+        for (int i = cell->posi; i<cell->posi+total_round; i++) {
+            tmp_type.push(cells[i*maxj+cell->posj]->type);
+        }
+        for (int i=0; i<step; i++) {
+            int type = tmp_type.front();
+            tmp_type.pop();
+            tmp_type.push(type);
+        }
+        for (int i = cell->posi; i<cell->posi+total_round; i++) {
+            cells[i*maxj+cell->posj]->type = tmp_type.front();
+            tmp_type.pop();
+        }
+    }
+
+    void colored(int i,int j) {
+        int pos = i*maxj+j;
+        cells[pos]->colored = true;
+        //printf ("colored:%d,%d\n", i,j);
+    }
+    void unify() {
+        for (int i=0; i<maxi; i++) {
+            for (int j=0; j<maxj; j++) {
+                //right-3
+                if (valid(i,j) && valid(i,j+1) && valid(i,j+2)) {
+                    if ((cells[i*maxj+j]->type == cells[i*maxj+j+1]->type)&&
+                        (cells[i*maxj+j]->type == cells[i*maxj+j+2]->type)) {
+                    colored(i,j); colored(i,j+1); colored(i,j+2);}
+                }
+
+                //down-3
+                if (valid(i,j) && valid(i+1, j) && valid(i+2,j)) {
+                    if ((cells[i*maxj+j]->type == cells[(i+1)*maxj+j]->type)&&
+                        (cells[i*maxj+j]->type == cells[(i+2)*maxj+j]->type)){
+                    colored(i,j); colored(i+1,j); colored(i+2,j);}
+                }
+
+                //middle-4
+                if (valid(i,j) && valid(i,j+1) && valid(i+1,j) && valid(i+1, j+1)) {
+                    if ((cells[i*maxj+j]->type == cells[i*maxj+j+1]->type)
+                        &&(cells[(i+1)*maxj+j]->type == cells[(i+1)*maxj+j+1]->type)
+                        &&(cells[i*maxj+j]->type == cells[(i+1)*maxj+j+1]->type)) {
+                    colored(i,j); colored(i,j+1); colored(i+1, j); colored(i+1,j+1);}
+                }
+            }
+        }
+
+        for (int i=0; i<maxi; i++) {
+            for (int j=0; j<maxj; j++) {
+                int pos = i*maxj+j;
+                if (cells[pos]==NULL) continue;
+                if (cells[pos]->colored) {
+                    delete cells[pos];
+                    cells[pos] = NULL;
+                }
+            }
+        }
+
+    }
+};
+
+struct STATE {
+    MATRIX* matrix;
+    int step;
+    STATE* last_state;
+
+    STATE(MATRIX* ma, int s, STATE* last) {
+        matrix = ma;
+        step =s;
+        last_state = last;
+    }
+    void move_right(CELL* cell, int round, vector<STATE*>&result) {
+        for (int i=1; i<round; i++) {
+            MATRIX* ma = matrix->copy_self();
+            STATE* new_state = new STATE(ma, step+1, this);
+            //printf("move right:[%d,%d] %d,%d\n",cell->posi, cell->posj, i, round);
+            ma->move_right(cell, i, round);
+            //ma->show();
+            ma->unify();
+            //ma->show();
+            //printf ("\n\n");
+            result.push_back(new_state);
+        }
+    }
+
+    void move_down(CELL* cell, int round, vector<STATE*>&result) {
+        for (int i=1; i<round; i++) {
+            MATRIX* ma = matrix->copy_self();
+            STATE* new_state = new STATE(ma, step+1, this);
+            ma->move_down(cell, i, round);
+            ma->unify();
+            result.push_back(new_state);
+        }
+    }
+
+};
+
+STATE* container[theMod];
+bool go_into(STATE* state) {
+    int sign = state->matrix->sign();
+    //state->matrix->show();
+    //printf ("sign:%d\n",sign);
+    if (container[sign]==NULL) {
+        container[sign] = state;
+        return true;
+    }
+    return false;
+}
+
+void bfs(STATE* init_state) {
+    queue<STATE*> states;
+
+    if (go_into(init_state)) states.push(init_state);
+    while (!states.empty()) {
+        STATE* cur_state = states.front();
+        //cur_state->matrix->show();
+        STATE* new_state = NULL;
+        states.pop();
+        MATRIX* mat = cur_state->matrix;
+
+        vector<MOVE>right_moves;
+        mat->right_moves(right_moves);
+
+        for (vector<MOVE>::iterator it = right_moves.begin(); it!=right_moves.end(); ++it) {
+            vector<STATE*>new_states;
+            //printf ("right: [%d %d %d]\n", it->cell->posi, it->cell->posj, it->round);
+
+
+            cur_state->move_right((*it).cell, (*it).round, new_states);
+            for (vector<STATE*>::iterator iter = new_states.begin(); iter!=new_states.end(); ++iter) {
+                new_state = *iter;
+                if (go_into(new_state)) states.push(new_state);
+                else delete new_state;
+            }
+            new_states.clear();
+        }
+        right_moves.clear();
+        //break;
+
+        vector<MOVE>down_moves;
+        mat->down_moves(down_moves);
+
+        for (vector<MOVE>::iterator it = down_moves.begin(); it!= down_moves.end(); ++it) {
+            //printf ("down: [%d %d %d]\n", it->cell->posi, it->cell->posj, it->round);
+        }
+        for (vector<MOVE>::iterator it = down_moves.begin(); it!= down_moves.end(); ++it) {
+            vector<STATE*>new_states;
+            cur_state->move_down(it->cell, it->round, new_states);
+            for (vector<STATE*>::iterator iter = new_states.begin(); iter!=new_states.end(); ++iter) {
+                new_state = *iter;
+                if (go_into(new_state)) states.push(new_state);
+                else delete new_state;
+            }
+            new_states.clear();
+        }
+        down_moves.clear();
+    }
+}
+
+
+int main()
+{
+    for (int i=0; i<theMod; i++) container[i]=NULL;
+    //AAABBB
+    //  AB
+    //  AB
+    MATRIX* ma = new MATRIX(3,6,2);
+    ma->add(0,0,1); ma->add(0,1,1); ma->add(0,2,1); ma->add(1,2,1); ma->add(2,2,1);
+    ma->add(0,3,2); ma->add(0,4,2); ma->add(0,5,2); ma->add(1,3,2); ma->add(2,3,2);
+
+    //ma->add(1,1,1); ma->add(1,2,2);
+
+    STATE* state = new STATE(ma,0,NULL);
+    //state->matrix->show();
+    bfs(state);
+
+    for (int i=0; i<theMod; i++) {
+        if (container[i]==NULL) continue;
+        container[i]->matrix->show();
+        printf ("\n");
+    }
+    return 0;
+}
