@@ -248,6 +248,11 @@ struct STATE {
             result.push_back(new_state);
         }
     }
+    void show() {
+        printf("step:%d\n",step);
+        matrix->show();
+        printf ("----------------------\n");
+    }
 
 };
 
@@ -317,12 +322,14 @@ void bfs(STATE* init_state) {
 int main()
 {
     for (int i=0; i<theMod; i++) container[i]=NULL;
-    //AAABBB
-    //  AB
-    //  AB
-    MATRIX* ma = new MATRIX(3,6,2);
-    ma->add(0,0,1); ma->add(0,1,1); ma->add(0,2,1); ma->add(1,2,1); ma->add(2,2,1);
-    ma->add(0,3,2); ma->add(0,4,2); ma->add(0,5,2); ma->add(1,3,2); ma->add(2,3,2);
+    // 0123
+    //0ABBA
+    //1A  A
+    //2B  B
+    //3BAAB
+    MATRIX* ma = new MATRIX(4,4,2);
+    ma->add(0,0,1); ma->add(0,1,1); ma->add(3,1,1); ma->add(3,2,1); ma->add(0,3,1); ma->add(1,3,1);
+    ma->add(0,2,2); ma->add(0,3,2); ma->add(3,3,2); ma->add(3,2,2); ma->add(1,0,2); ma->add(2,0,2);
 
     //ma->add(1,1,1); ma->add(1,2,2);
 
@@ -332,7 +339,7 @@ int main()
 
     for (int i=0; i<theMod; i++) {
         if (container[i]==NULL) continue;
-        container[i]->matrix->show();
+        container[i]->show();
         printf ("\n");
     }
     return 0;
